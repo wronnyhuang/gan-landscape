@@ -14,6 +14,8 @@ class GAN:
         self.netD = netD
         self.optimizerD = optim.Adam(netD.parameters(), lr=opt.lrD, betas=(opt.beta1, 0.999))
         self.optimizerG = optim.Adam(netG.parameters(), lr=opt.lrG, betas=(opt.beta1, 0.999))
+        self.schedulerD = optim.lr_scheduler.StepLR(self.optimizerD, 8)
+        self.schedulerG = optim.lr_scheduler.StepLR(self.optimizerG, 8)
 
         self.real_label = 1
         self.fake_label = 0
@@ -72,6 +74,9 @@ class GAN:
         self.netG.train()
 
         for epoch in range(self.start_epoch, self.opt.nepochs):
+            self.schedulerD.step()
+            self.schedulerG.step()
+            # print('test')
             for i, data in enumerate(self.dataloader, 0):
 
                 # Forming data and label tensors
@@ -90,12 +95,12 @@ class GAN:
                                     real_disc_loss, fake_disc_loss))
                     
                     # comet logs
-                    experiment.log_metric('real_disc_loss', real_disc_loss)
-                    experiment.log_metric('fake_disc_loss', fake_disc_loss)
                     gradnormG = sum([param.grad.data.norm(2).item()**2 for param in self.netG.parameters()]) ** (1/2)
                     gradnormD = sum([param.grad.data.norm(2).item()**2 for param in self.netD.parameters()]) ** (1/2)
-                    experiment.log_metric('gradnormG', gradnormG)
-                    experiment.log_metric('gradnormD', gradnormD)
+                    experiment.log_metric('real_disc_loss', real_disc_loss, len(self.dataloader) * epoch + i)
+                    experiment.log_metric('fake_disc_loss', fake_disc_loss, len(self.dataloader) * epoch + i)
+                    experiment.log_metric('gradnormG', gradnormG, len(self.dataloader) * epoch + i)
+                    experiment.log_metric('gradnormD', gradnormD, len(self.dataloader) * epoch + i)
 
 
                 if i % 100 == 0:
